@@ -1,4 +1,3 @@
-from email.policy import default
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
@@ -15,3 +14,16 @@ class User(db.Model):
     name = db.Column(db.String, default='')
     role = db.Column(db.String, nullable=False)
     permissions = db.Column(db.String, default='')
+
+    def __init__(self, name, role, permissions):
+        self.name = name
+        self.role = role
+        self.permissions = permissions
+    
+    def create(self):
+        db.session.add(self)
+        db.session.commit()
+        return self
+
+    def __repr__(self):
+        return '<User %r>' % self.id
