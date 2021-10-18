@@ -7,6 +7,11 @@ from itsdangerous import (TimedJSONWebSignatureSerializer
 
 db = SQLAlchemy()
 
+list_map = db.Table('list_map',
+                    db.Column('company_list_id', db.Integer, db.ForeignKey('company_list.id'), primary_key=True),
+                    db.Column('users_id', db.Integer, db.ForeignKey('users.id'), primary_key=True)
+                   )
+
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
@@ -15,6 +20,8 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(80))
     passhash = db.Column(db.String)
     permissions = db.Column(db.String, default='')
+    user_company_list = db.relationship('CompanyList', secondary=list_map, lazy='subquery',
+                                        backref=db.backref('users', lazy=True))
 
     def __init__(self, username):
         self.username = username
@@ -50,6 +57,9 @@ class User(UserMixin, db.Model):
         else:
             self.permissions += ',' + permission.lower()
 
+    def get_permissions(self):
+        return self.permissions
+
     def generate_auth_token(self, expiration = 800):
         s = Serializer(Config.SECRET_KEY, expires_in = expiration)
         return s.dumps({ 'id': self.id })
@@ -65,3 +75,26 @@ class User(UserMixin, db.Model):
             return None # invalid token
         user = User.query.get(data['id'])
         return user
+
+class CompanyList(db.Model):
+    '''
+    Company is identified as an integer
+    '''
+    __tablename__ = 'company_list'
+    id = db.Column(db.Integer, primary_key=True)
+    company_list = db.Column(db.String, default='')
+
+    def create_entry(self):
+        db.session.add(self)
+        db.session.commit()
+    
+    def delete_entry(self):
+        db.session.delete(self)
+        db.session.commit()
+        return self
+
+    def set_company_list(self, company_list):
+        self.company_list = ','.join(company_list).lower()
+
+    def get_company_list(self):
+        return self.company_list.split(',')

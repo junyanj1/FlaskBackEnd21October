@@ -1,5 +1,5 @@
 import logging
-from models import db, User
+from models import db, User, CompanyList
 from flask import Flask, jsonify, request
 from config import Config
 from flask_httpauth import HTTPBasicAuth
@@ -141,6 +141,50 @@ def delete_user():
         return {"Error": f"Deleting user with id: {u.id} and username: {u.username} failed because of internal error. Please try again."}
     else:
         return {"Success": f"successfully deleted user with id: {u.id} and username: {u.username}"}
+
+@app.route("/api/CompanyLists/create", methods=["POST"])
+@auth.login_required(role="admin")
+def create_company_list():
+    new_list = request.json.get('company_list')
+    if new_list is None:
+        return {"Error": "Input not containing the company_list field, please try again."}
+    new_company_list = CompanyList()
+    new_company_list.set_company_list([str(i) for i in new_list])
+    new_company_list.create_entry()
+    cl = CompanyList.query.filter_by(id=new_company_list.id).first()
+    return {"Success": {"id": cl.id, "CompanyList": [cl.company_list.split(",")]}}
+
+
+@app.route('/api/CompanyLists/list', methods=['GET'])
+@auth.login_required(role=['admin','user'])
+def list_company_lists():
+    user = auth.current_user()
+    if user.role != 'admin':
+        permissions = user.get_permissions().split(',')
+        if 'company_list' not in permissions:
+            return {'Error': 'User does not have permission to company lists.'}
+    company_lists = CompanyList.query.all()
+    response = {}
+    for cl in company_lists:
+        response[cl.id] = {'company_list': cl.company_list}
+    return response
+
+
+@app.route('/api/CompanyLists/delete', methods=['DELETE'])
+@auth.login_required(role='admin')
+def delete_company_list():
+    clid = request.json.get('id')
+    if clid is None:
+        return {'Error': 'The request body does not have field id. Please try again.'}
+    cl = CompanyList.query.filter_by(id=clid).first()
+    if cl is None:
+        return {'Error': f'The requested id {clid} cannot be found.'}
+    cl.delete_entry()
+    if CompanyList.query.filter_by(id=cl.id).count() != 0:
+        return {"Error": f"Deleting company list with id: {cl.id} failed because of internal error. Please try again."}
+    else:
+        return {"Success": f"successfully deleted company list with id: {cl.id} and content: {cl.company_list}"}
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='127.0.0.1')
