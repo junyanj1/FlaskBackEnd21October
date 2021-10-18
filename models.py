@@ -23,6 +23,11 @@ class User(UserMixin, db.Model):
         db.session.add(self)
         db.session.commit()
 
+    def delete_entry(self):
+        db.session.delete(self)
+        db.session.commit()
+        return self
+
     def set_password(self, password):
         self.passhash = generate_password_hash(password)
 
@@ -35,6 +40,9 @@ class User(UserMixin, db.Model):
     def get_role(self):
         # Assuming one user can only have one role
         return self.role
+
+    def set_permissions(self, permissions):
+        self.permissions = permissions.lower()
 
     def add_permission(self, permission):
         if self.permissions is None or len(self.permissions) == 0:
