@@ -3,6 +3,14 @@ Take home Flask assignment
 
 Assumptions: each account can have only one role but 0 or many permissions. 
 
+How to run:
+
+
+    1. create a python virtual environment with python 3.9.7
+    2. pip install -r requirements.txt
+    3. python app.py
+    4. the default URL is: 127.0.0.1:5000/
+
 The backend starts with two predefined users:
 ```json
 {
