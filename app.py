@@ -3,6 +3,7 @@ from models import db, User, CompanyList
 from flask import Flask, jsonify, request
 from config import Config
 from flask_httpauth import HTTPBasicAuth
+from hashlib import sha256
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -233,6 +234,16 @@ def delete_associations():
     return {'Success': f'removed company list with id: {cl.id} and list: {cl.company_list}, '+
                        f'from user with id: {u.id} and username: {u.username}'
            }
+
+@app.route('/api/viewCompany/<company_id>', methods=['GET'])
+@auth.login_required(role='user')
+def view_company(company_id):
+    user = auth.current_user()
+    permissions = user.get_permissions().split(',')
+    if 'company_info' not in permissions:
+        return {'Error': f'The current user with id: {user.id} and username: {user.username} does not have "company_info" permission.'}
+
+    return {'Company info': sha256(str(company_id).encode('utf-8')).hexdigest()}
 
 if __name__ == '__main__':
     app.run(debug=True, host='127.0.0.1')
