@@ -73,10 +73,10 @@ def create_new_user():
     password = request.json.get('password')
     permissions = request.json.get('permissions')
     if None in [username, role, password, permissions]:
-        return {"Error": "Invalid input, please make sure to have username, role, password and permissions"}
+        return {"Error": "Invalid input, please make sure to have username, role, password and permissions"}, 401
     if User.query.filter_by(username=username).first() is not None:
-        return {"Error": f"Invalid input, username {username} already exists"}
-    # print(f"username: {username}, role: {role}, password: {password}, permissions: {permissions}")
+        return {"Error": f"Invalid input, username {username} already exists"}, 409
+    
     new_user = User(username=username)
     new_user.set_password(password)
     new_user.set_role(role)
@@ -91,7 +91,7 @@ def update_user():
     uid = request.json.get('id')
     username = request.json.get('username')
     if uid is None and username is None:
-        return {"Error": "require either user id or username to make updates. "}
+        return {"Error": "require either user id or username to make updates. "}, 400
     u = None
     if uid is not None:
         u = User.query.filter_by(id=uid).first()
@@ -99,7 +99,7 @@ def update_user():
         u = User.query.filter_by(username=username).first()
 
     if u is None:
-        return {"Error": f"the input id: {uid} and username: {username} cannot match any user on record."}
+        return {"Error": f"the input id: {uid} and username: {username} cannot match any user on record."}, 404
     
     password = request.json.get('password')
     role = request.json.get('role')
@@ -127,7 +127,7 @@ def delete_user():
     uid = request.json.get('id')
     username = request.json.get('username')
     if uid is None and username is None:
-        return {"Error": "require either user id or username to delete user. "}
+        return {"Error": "require either user id or username to delete user. "}, 400
     u = None
     if uid is not None:
         u = User.query.filter_by(id=uid).first()
@@ -135,11 +135,11 @@ def delete_user():
         u = User.query.filter_by(username=username).first()
 
     if u is None:
-        return {"Error": f"the input id: {uid} and username: {username} cannot match any user on record."}
+        return {"Error": f"the input id: {uid} and username: {username} cannot match any user on record."}, 404
     
     u.delete_entry()
     if User.query.filter_by(id=u.id).count() != 0:
-        return {"Error": f"Deleting user with id: {u.id} and username: {u.username} failed because of internal error. Please try again."}
+        return {"Error": f"Deleting user with id: {u.id} and username: {u.username} failed because of internal error. Please try again."}, 500
     else:
         return {"Success": f"successfully deleted user with id: {u.id} and username: {u.username}"}
 
@@ -148,7 +148,7 @@ def delete_user():
 def create_company_list():
     new_list = request.json.get('company_list')
     if new_list is None:
-        return {"Error": "Input not containing the company_list field, please try again."}
+        return {"Error": "Input not containing the company_list field, please try again."}, 400
     new_company_list = CompanyList()
     new_company_list.set_company_list([str(i) for i in new_list])
     new_company_list.create_entry()
@@ -163,7 +163,7 @@ def list_company_lists():
     if user.role != 'admin':
         permissions = user.get_permissions().split(',')
         if 'company_list' not in permissions:
-            return {'Error': 'User does not have permission to company lists.'}
+            return {'Error': 'User does not have permission to company lists.'}, 401
     company_lists = CompanyList.query.all()
     response = {}
     for cl in company_lists:
@@ -176,13 +176,13 @@ def list_company_lists():
 def delete_company_list():
     clid = request.json.get('id')
     if clid is None:
-        return {'Error': 'The request body does not have field id. Please try again.'}
+        return {'Error': 'The request body does not have field id. Please try again.'}, 400
     cl = CompanyList.query.filter_by(id=clid).first()
     if cl is None:
-        return {'Error': f'The requested id {clid} cannot be found.'}
+        return {'Error': f'The requested id {clid} cannot be found.'}, 404
     cl.delete_entry()
     if CompanyList.query.filter_by(id=cl.id).count() != 0:
-        return {"Error": f"Deleting company list with id: {cl.id} failed because of internal error. Please try again."}
+        return {"Error": f"Deleting company list with id: {cl.id} failed because of internal error. Please try again."}, 500
     else:
         return {"Success": f"successfully deleted company list with id: {cl.id} and content: {cl.company_list}"}
 
@@ -192,13 +192,13 @@ def create_association():
     uid = request.json.get('userId')
     clid = request.json.get('companyListId')
     if None in [uid, clid]:
-        return {'Error': 'Missing required fields userId or/and companyListId in the body.'}
+        return {'Error': 'Missing required fields userId or/and companyListId in the body.'}, 400
     cl = CompanyList.query.filter_by(id=clid).first()
     if cl is None:
-        return {'Error': f'Invalid company list id {clid}.'}
+        return {'Error': f'Invalid company list id {clid}.'}, 404
     u = User.query.filter_by(id=uid).first()
     if u is None:
-        return {'Error': f'Invalid user id {uid}.'}
+        return {'Error': f'Invalid user id {uid}.'}, 404
     u.user_company_list.append(cl)
     db.session.commit()
     return {'Success': f'Added association for user with id: {u.id} and username: {u.username} with company list: {cl.company_list}'}
@@ -207,10 +207,10 @@ def create_association():
 @auth.login_required(role='admin')
 def list_associations(uid):
     if uid is None:
-        return {'Error': 'Missing user id in the path route.'}
+        return {'Error': 'Missing user id in the path route.'}, 400
     u = User.query.filter_by(id=uid).first()
     if u is None:
-        return {'Error': f'The given user id {uid} cannot be found.'}
+        return {'Error': f'The given user id {uid} cannot be found.'}, 404
     response = {}
     for cl in u.user_company_list:
         response[cl.id] = cl.company_list
@@ -222,13 +222,13 @@ def delete_associations():
     uid = request.json.get('userId')
     clid = request.json.get('companyListId')
     if None in [uid, clid]:
-        return {'Error': 'Missing field userId and/or companyListId in the body.'}
+        return {'Error': 'Missing field userId and/or companyListId in the body.'}, 400
     u = User.query.filter_by(id=uid).first()
     if u is None:
-        return {'Error': f'User with id: {uid} cannot be found.'}
+        return {'Error': f'User with id: {uid} cannot be found.'}, 404
     cl = CompanyList.query.filter_by(id=clid).first()
     if cl is None:
-        return {'Error': f'Company list with id: {clid} cannot be found.'}
+        return {'Error': f'Company list with id: {clid} cannot be found.'}, 404
     u.user_company_list.remove(cl)
     db.session.commit()
     return {'Success': f'removed company list with id: {cl.id} and list: {cl.company_list}, '+
@@ -241,7 +241,7 @@ def view_company(company_id):
     user = auth.current_user()
     permissions = user.get_permissions().split(',')
     if 'company_info' not in permissions:
-        return {'Error': f'The current user with id: {user.id} and username: {user.username} does not have "company_info" permission.'}
+        return {'Error': f'The current user with id: {user.id} and username: {user.username} does not have "company_info" permission.'}, 401
 
     return {'Company info': sha256(str(company_id).encode('utf-8')).hexdigest()}
 
