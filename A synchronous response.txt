@@ -1,0 +1,12 @@
+## A synchronous response ##
+The problem: We want a synchronous response facing client request, but the API server relies on 
+another service to complete the pipeline.
+
+Since the pipeline does not take too much time to run on average and needs to be served synchronously, 
+I propose to:
+    a. label each pipeline run with timestamp and clientId on the API server
+    b. send the pipeline label along with other information to "another service" that starts the pipeline script
+    c. once the pipeline is done, publish the "pipeline label: result" pair in an in-memory database
+    d. let the API server to check the in-memory database with corresponding pipeline labels periodically
+    e. if the result is published, return it as the synchronous response and delete that entry from the database
+    
