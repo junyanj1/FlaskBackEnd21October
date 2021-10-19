@@ -185,6 +185,54 @@ def delete_company_list():
     else:
         return {"Success": f"successfully deleted company list with id: {cl.id} and content: {cl.company_list}"}
 
+@app.route("/api/userCompanyListAssociation/create", methods=["POST"])
+@auth.login_required(role='admin')
+def create_association():
+    uid = request.json.get('userId')
+    clid = request.json.get('companyListId')
+    if None in [uid, clid]:
+        return {'Error': 'Missing required fields userId or/and companyListId in the body.'}
+    cl = CompanyList.query.filter_by(id=clid).first()
+    if cl is None:
+        return {'Error': f'Invalid company list id {clid}.'}
+    u = User.query.filter_by(id=uid).first()
+    if u is None:
+        return {'Error': f'Invalid user id {uid}.'}
+    u.user_company_list.append(cl)
+    db.session.commit()
+    return {'Success': f'Added association for user with id: {u.id} and username: {u.username} with company list: {cl.company_list}'}
+
+@app.route('/api/userCompanyListAssociation/read/<uid>', methods=['GET'])
+@auth.login_required(role='admin')
+def list_associations(uid):
+    if uid is None:
+        return {'Error': 'Missing user id in the path route.'}
+    u = User.query.filter_by(id=uid).first()
+    if u is None:
+        return {'Error': f'The given user id {uid} cannot be found.'}
+    response = {}
+    for cl in u.user_company_list:
+        response[cl.id] = cl.company_list
+    return response
+
+@app.route('/api/userCompanyListAssociation/delete', methods=['DELETE'])
+@auth.login_required(role='admin')
+def delete_associations():
+    uid = request.json.get('userId')
+    clid = request.json.get('companyListId')
+    if None in [uid, clid]:
+        return {'Error': 'Missing field userId and/or companyListId in the body.'}
+    u = User.query.filter_by(id=uid).first()
+    if u is None:
+        return {'Error': f'User with id: {uid} cannot be found.'}
+    cl = CompanyList.query.filter_by(id=clid).first()
+    if cl is None:
+        return {'Error': f'Company list with id: {clid} cannot be found.'}
+    u.user_company_list.remove(cl)
+    db.session.commit()
+    return {'Success': f'removed company list with id: {cl.id} and list: {cl.company_list}, '+
+                       f'from user with id: {u.id} and username: {u.username}'
+           }
 
 if __name__ == '__main__':
     app.run(debug=True, host='127.0.0.1')
